@@ -12,4 +12,8 @@ connectDB();
 app.use('/api/auth', authRoutes);
 app.use('/api/product',productRoutes);
 
+app.get('/', (req, res) => {
+    res.send('Welcome to Alday API');
+});
+
 app.listen(5000, () => console.log('Server running on port 5000'));
