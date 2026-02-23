@@ -18,20 +18,19 @@ const generateToken = (userId) => {
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    let { fullName, email, password } = req.body;
+    let { fullName, email, password, phone } = req.body;
 
-    // ✅ basic validation
-    if (!fullName || !email || !password) {
+    // ✅ validation
+    if (!fullName || !email || !password || !phone) {
       return res.status(400).json({
         success: false,
-        message: "fullName, email and password are required",
+        message: "fullName, email, phone and password are required",
       });
     }
 
-    // ✅ normalize email
+    // normalize
     email = email.toLowerCase().trim();
 
-    // ✅ password strength check (optional but recommended)
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -39,7 +38,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    // ✅ check existing user
+    // check existing
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({
@@ -48,17 +47,17 @@ exports.register = async (req, res) => {
       });
     }
 
-    // ✅ hash password
+    // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ create user
+    // ✅ CREATE USER WITH PHONE
     const user = await User.create({
       fullName: fullName.trim(),
       email,
+      phone: phone.trim(),
       password: hashedPassword,
     });
 
-    // ✅ generate token
     const token = generateToken(user._id);
 
     return res.status(201).json({
@@ -69,6 +68,7 @@ exports.register = async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        phone: user.phone,
       },
     });
   } catch (err) {
