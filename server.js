@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB=require('./config/db');
+const cors = require('cors');
 dotenv.config();
 
 const authRoutes = require('./router/authRoutes');
@@ -8,6 +9,13 @@ const productRoutes=require('./router/productRoutes');
 const cartRoutes=require('./router/cartRoutes');
 
 const app = express();
+app.use(cors(
+    {
+        origin: 'http://localhost:5173',
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    }
+));
 app.use(express.json());
 connectDB();
 app.use('/api/auth', authRoutes);
