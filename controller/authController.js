@@ -15,12 +15,10 @@ const generateToken = (userId) => {
   );
 };
 
-// ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
     let { fullName, email, password, phone } = req.body;
 
-    // ✅ validation
     if (!fullName || !email || !password || !phone) {
       return res.status(400).json({
         success: false,
@@ -28,7 +26,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // normalize
     email = email.toLowerCase().trim();
 
     if (password.length < 6) {
@@ -38,7 +35,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // check existing
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({
@@ -47,15 +43,12 @@ exports.register = async (req, res) => {
       });
     }
 
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // ✅ CREATE USER WITH PHONE
+    // ✅ DO NOT HASH HERE — schema will hash
     const user = await User.create({
       fullName: fullName.trim(),
       email,
       phone: phone.trim(),
-      password: hashedPassword,
+      password,
     });
 
     const token = generateToken(user._id);
@@ -73,7 +66,6 @@ exports.register = async (req, res) => {
     });
   } catch (err) {
     console.error("Register Error:", err);
-
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -81,12 +73,10 @@ exports.register = async (req, res) => {
   }
 };
 
-// ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
     let { email, password } = req.body;
 
-    // ✅ validation
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -96,18 +86,18 @@ exports.login = async (req, res) => {
 
     email = email.toLowerCase().trim();
 
-    // ✅ find user
-    const user = await User.findOne({ email });
+    // ✅ IMPORTANT FIX HERE
+    const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
-      // prevent email enumeration
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
 
-    // ✅ compare password
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -115,7 +105,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ✅ generate token
     const token = generateToken(user._id);
 
     return res.status(200).json({
@@ -126,11 +115,11 @@ exports.login = async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        phone: user.phone,
       },
     });
   } catch (err) {
     console.error("Login Error:", err);
-
     return res.status(500).json({
       success: false,
       message: "Server error",
