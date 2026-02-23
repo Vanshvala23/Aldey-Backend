@@ -1,74 +1,69 @@
-const User=require('../modules/Users');
-const bcrypt=require('bcryptjs');
-const jwt=require('jsonwebtoken');
+const User = require("../modules/Users");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
+// helper
+const generateToken = (userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET not configured");
+  }
+
+  return jwt.sign(
+    { id: userId },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+};
+
+// ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    let { fullName, email, password } = req.body;
 
+    // ✅ basic validation
     if (!fullName || !email || !password) {
-      return res.status(400).json({ message: 'All fields required' });
+      return res.status(400).json({
+        success: false,
+        message: "fullName, email and password are required",
+      });
     }
 
-    // check existing user
-    const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: 'Email already registered' });
+    // ✅ normalize email
+    email = email.toLowerCase().trim();
+
+    // ✅ password strength check (optional but recommended)
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
     }
 
-    // hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // ✅ check existing user
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
 
-    // create user
+    // ✅ hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ create user
     const user = await User.create({
-      fullName,
+      fullName: fullName.trim(),
       email,
       password: hashedPassword,
     });
 
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+    // ✅ generate token
+    const token = generateToken(user._id);
 
-
-
-// ---------------- LOGIN ----------------
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: 'All fields required' });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      message: 'Login successful',
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully",
       token,
       user: {
         id: user._id,
@@ -77,6 +72,68 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Register Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ================= LOGIN =================
+exports.login = async (req, res) => {
+  try {
+    let { email, password } = req.body;
+
+    // ✅ validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    email = email.toLowerCase().trim();
+
+    // ✅ find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      // prevent email enumeration
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // ✅ compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // ✅ generate token
+    const token = generateToken(user._id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    console.error("Login Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
