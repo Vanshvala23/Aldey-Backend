@@ -1,4 +1,4 @@
-const Cart = require("../modeues/Cart");
+const Cart = require("../modules/Cart");
 const Product = require("../modules/Products");
 
 // ================= GET CART =================
