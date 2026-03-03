@@ -1,7 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB=require('./config/db');
-const swaggerUi=require('swagger-ui-express');
 const swaggerSpec=require('./config/swager');
 const cors = require('cors');
 dotenv.config();
@@ -20,19 +19,45 @@ app.use(cors(
 ));
 app.use(express.json());
 connectDB();
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    explorer: true,
-    customSiteTitle: "Alday API Docs",
-    customCss: `
-      .swagger-ui .topbar { display: none }
-      .swagger-ui .info { margin-bottom: 30px }
-      body { background: #0f172a; }
-    `,
-  })
-);
+app.get("/api-docs", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alday API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { background: #0f172a; margin: 0; }
+    .swagger-ui .topbar { display: none }
+    .swagger-ui .info { margin-bottom: 30px }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = () => {
+      SwaggerUIBundle({
+        url: "/api-docs/json",
+        dom_id: "#swagger-ui",
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: "StandaloneLayout",
+        deepLinking: true,
+      });
+    };
+  </script>
+</body>
+</html>
+  `);
+});
+
+// Serve the raw spec as JSON (used by the UI above)
+app.get("/api-docs/json", (req, res) => {
+  res.json(swaggerSpec);
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/product',productRoutes);
 app.use("/api/cart",cartRoutes);
