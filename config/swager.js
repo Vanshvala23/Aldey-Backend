@@ -1,4 +1,10 @@
 const swaggerJsdoc = require("swagger-jsdoc");
+const mongooseToSwagger = require("mongoose-to-swagger");
+
+// import models
+const Product = require("../modules/Products");
+const User = require("../modules/Users");
+const Cart = require("../modules/Cart");
 
 const options = {
   definition: {
@@ -11,15 +17,13 @@ const options = {
 
     servers: [
       {
-        url: "https://aldey-backend.vercel.app/",
+        url: "https://aldey-backend.vercel.app",
+        description: "Production server",
+      },
+      {
+        url: "http://localhost:5000",
         description: "Local server",
       },
-    ],
-
-    tags: [
-      { name: "Auth", description: "Authentication APIs" },
-      { name: "Products", description: "Product management" },
-      { name: "Cart", description: "Cart operations" },
     ],
 
     components: {
@@ -31,25 +35,18 @@ const options = {
         },
       },
 
+      // 🔥 AUTO GENERATED SCHEMAS
       schemas: {
-        Product: {
-          type: "object",
-          properties: {
-            productId: { type: "string" },
-            name: { type: "string" },
-            category: { type: "string" },
-            price: { type: "number" },
-            description: { type: "string" },
-            image: { type: "string" },
-          },
-        },
+        Product: mongooseToSwagger(Product),
+        User: mongooseToSwagger(User),
+        Cart: mongooseToSwagger(Cart),
       },
     },
 
     security: [{ bearerAuth: [] }],
   },
 
-  apis: ["./router/*.js"],
+  apis: ["./router/**/*.js"],
 };
 
 module.exports = swaggerJsdoc(options);
