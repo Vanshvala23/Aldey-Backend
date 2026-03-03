@@ -20,8 +20,19 @@ app.use(cors(
 ));
 app.use(express.json());
 connectDB();
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customSiteTitle: "Alday API Docs",
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .info { margin-bottom: 30px }
+      body { background: #0f172a; }
+    `,
+  })
+);
 app.use('/api/auth', authRoutes);
 app.use('/api/product',productRoutes);
 app.use("/api/cart",cartRoutes);
