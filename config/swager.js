@@ -17,13 +17,9 @@ const options = {
 
     servers: [
       {
-        url: "https://aldey-backend.vercel.app",
-        description: "Production server",
-      },
-      {
-        url: "http://localhost:5000",
-        description: "Local server",
-      },
+    url: "/",
+    description: "Current server",
+  },
     ],
 
     components: {
