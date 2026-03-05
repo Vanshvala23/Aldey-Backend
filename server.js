@@ -10,14 +10,14 @@ const productRoutes=require('./router/productRoutes');
 const cartRoutes=require('./router/cartRoutes');
 
 const app = express();
-app.use(cors(
-    {
-        origin: "*",
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization']
-    }
-));
-app.options('*', cors());
+const corsOptions = {
+  origin: "*",
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options(/(.*)/, cors(corsOptions));
 app.use(express.json());
 connectDB();
 app.get("/api-docs", (req, res) => {
