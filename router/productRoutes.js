@@ -148,4 +148,47 @@ router.put("/:id", upload.single("image"), productController.updateProduct);
  */
 router.delete("/:id", productController.deleteProduct);
 
+/**
+ * @swagger
+ * /api/product/{id}:
+ *   patch:
+ *     summary: Partially update product
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               mrp:
+ *                 type: number
+ *               category:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               tag:
+ *                 type: string
+ *               sale:
+ *                 type: boolean
+ *               isActive:
+ *                 type: boolean
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Product partially updated
+ */
+router.patch("/:id", upload.single("image"), productController.updateProduct);
+
 module.exports = router;
