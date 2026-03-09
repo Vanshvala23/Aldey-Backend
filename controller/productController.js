@@ -218,7 +218,7 @@ exports.updateProduct = async (req, res) => {
     const product = await Product.findOneAndUpdate(
       { productId: req.params.id },
       updates,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!product) {
@@ -239,7 +239,7 @@ exports.deleteProduct = async (req, res) => {
     const product = await Product.findOneAndUpdate(
       { productId: req.params.id },
       { isActive: false },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!product) {
