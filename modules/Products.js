@@ -6,7 +6,7 @@ const keyActiveSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
     desc: { type: String, trim: true },
-    img: { type: String, trim: true },
+    img:  { type: String, trim: true },
   },
   { _id: false }
 );
@@ -14,17 +14,17 @@ const keyActiveSchema = new mongoose.Schema(
 const ritualSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true },
-    desc: { type: String, trim: true },
+    desc:  { type: String, trim: true },
   },
   { _id: false }
 );
 
 const ingredientSchema = new mongoose.Schema(
   {
-    name: { type: String, trim: true },
-    source: { type: String, trim: true },
+    name:     { type: String, trim: true },
+    source:   { type: String, trim: true },
     function: { type: String, trim: true },
-    type: { type: String, trim: true },
+    type:     { type: String, trim: true },
   },
   { _id: false }
 );
@@ -35,133 +35,126 @@ const productSchema = new mongoose.Schema(
   {
     // 🔑 frontend id mapping
     productId: {
-      type: String,
+      type:     String,
       required: true,
-      unique: true,
-      trim: true,
-      index: true,
+      unique:   true,
+      trim:     true,
+      index:    true,
     },
 
     // Basic info
     name: {
-      type: String,
+      type:     String,
       required: true,
-      trim: true,
-      index: true,
+      trim:     true,
+      index:    true,
     },
 
-    title: {
-      type: String,
-      trim: true,
-    },
-
-    subtitle: {
-      type: String,
-      trim: true,
-    },
+    title:    { type: String, trim: true },
+    subtitle: { type: String, trim: true },
 
     vendor: {
-      type: String,
-      trim: true,
+      type:  String,
+      trim:  true,
       index: true,
     },
 
+    // ✅ category — now supports multiple values e.g. ["Shampoo", "Hair Care"]
     category: {
-      type: String,
+      type:     [String],
       required: true,
-      index: true,
+      index:    true,
+      set: (val) => {
+        // Accept both string and array from request body
+        if (typeof val === "string") {
+          try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) ? parsed : [val];
+          } catch {
+            return [val];
+          }
+        }
+        return val;
+      },
     },
 
     concern: {
-      type: String,
-      trim: true,
+      type:  String,
+      trim:  true,
       index: true,
     },
 
     // 💰 Pricing
     price: {
-      type: Number,
+      type:     Number,
       required: true,
-      min: 0,
+      min:      0,
     },
 
     mrp: {
       type: Number,
-      min: 0,
+      min:  0,
     },
 
     sale: {
-      type: Boolean,
+      type:    Boolean,
       default: false,
     },
 
     // ⭐ Ratings
     rating: {
-      type: Number,
+      type:    Number,
       default: 0,
-      min: 0,
-      max: 5,
-      index: true,
+      min:     0,
+      max:     5,
+      index:   true,
     },
 
     reviewCount: {
-      type: Number,
+      type:    Number,
       default: 0,
-      min: 0,
+      min:     0,
     },
 
     // 🖼 Images
     image: {
-      type: String,
+      type:     String,
       required: true,
-      trim: true,
+      trim:     true,
     },
 
     images: {
-      type: [String],
+      type:    [String],
       default: [],
     },
 
     // 📝 Description
     description: {
-      type: String,
+      type:     String,
       required: true,
-      trim: true,
+      trim:     true,
     },
 
     // 🧪 Rich Content
-    keyActives: {
-      type: [keyActiveSchema],
-      default: [],
-    },
+    keyActives:      { type: [keyActiveSchema],  default: [] },
+    ritual:          { type: [ritualSchema],      default: [] },
+    fullIngredients: { type: [ingredientSchema],  default: [] },
 
-    ritual: {
-      type: [ritualSchema],
-      default: [],
-    },
-
-    fullIngredients: {
-      type: [ingredientSchema],
-      default: [],
-    },
-
-    // 🏷 Optional tag (bestseller, new, etc.)
+    // 🏷 Optional tag
     tag: {
-      type: String,
+      type:    String,
       default: null,
-      trim: true,
+      trim:    true,
     },
 
-    // 📦 Future-ready flags
+    // 📦 Soft delete flag
     isActive: {
-      type: Boolean,
+      type:    Boolean,
       default: true,
-      index: true,
+      index:   true,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 /* ------------------ Indexes (Performance) ------------------ */

@@ -14,6 +14,23 @@ const safeParse = (field) => {
 };
 
 /* =====================================================
+   🧠 Helper — Safe Category Parse
+   Accepts:  "Face Wash"  →  ["Face Wash"]
+             ["Face Wash", "Skin Care"]  →  ["Face Wash", "Skin Care"]
+             '["Face Wash","Skin Care"]'  →  ["Face Wash", "Skin Care"]
+===================================================== */
+const parseCategory = (category) => {
+  if (!category) return [];
+  if (Array.isArray(category)) return category;
+  try {
+    const parsed = JSON.parse(category);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [category]; // plain string fallback
+  }
+};
+
+/* =====================================================
    ➕ CREATE PRODUCT
 ===================================================== */
 exports.createProduct = async (req, res) => {
@@ -47,15 +64,15 @@ exports.createProduct = async (req, res) => {
       });
     }
 
-    // 🔥 parse arrays safely (VERY IMPORTANT)
-    images = safeParse(images);
-    keyActives = safeParse(keyActives);
-    ritual = safeParse(ritual);
+    // 🔥 parse all arrays safely
+    category        = parseCategory(category);
+    images          = safeParse(images);
+    keyActives      = safeParse(keyActives);
+    ritual          = safeParse(ritual);
     fullIngredients = safeParse(fullIngredients);
 
     // ✅ handle main image (file OR raw URL)
     let mainImage = null;
-
     if (req.file?.path) {
       mainImage = req.file.path;
     } else if (req.body.image) {
@@ -63,9 +80,7 @@ exports.createProduct = async (req, res) => {
     }
 
     if (!mainImage) {
-      return res.status(400).json({
-        message: "Product image is required",
-      });
+      return res.status(400).json({ message: "Product image is required" });
     }
 
     const product = await Product.create({
@@ -108,14 +123,14 @@ exports.createProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
+      page           = 1,
+      limit          = 10,
       category,
       vendor,
       search,
       minPrice,
       maxPrice,
-      sort = "-createdAt",
+      sort           = "-createdAt",
       includeInactive = false,
     } = req.query;
 
@@ -126,8 +141,10 @@ exports.getProducts = async (req, res) => {
       query.isActive = true;
     }
 
+    // ✅ category filter works on arrays — matches any product
+    //    whose category array contains the queried value
     if (category) query.category = category;
-    if (vendor) query.vendor = vendor;
+    if (vendor)   query.vendor   = vendor;
 
     if (minPrice || maxPrice) {
       query.price = {};
@@ -150,9 +167,9 @@ exports.getProducts = async (req, res) => {
     res.json({
       success: true,
       total,
-      page: Number(page),
+      page:  Number(page),
       pages: Math.ceil(total / limit),
-      data: products,
+      data:  products,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -166,7 +183,7 @@ exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findOne({
       productId: req.params.id,
-      isActive: true,
+      isActive:  true,
     });
 
     if (!product) {
@@ -187,11 +204,11 @@ exports.updateProduct = async (req, res) => {
     const updates = { ...req.body };
 
     // 🔥 parse arrays if present
-    if (updates.images) updates.images = safeParse(updates.images);
-    if (updates.keyActives) updates.keyActives = safeParse(updates.keyActives);
-    if (updates.ritual) updates.ritual = safeParse(updates.ritual);
-    if (updates.fullIngredients)
-      updates.fullIngredients = safeParse(updates.fullIngredients);
+    if (updates.category)        updates.category        = parseCategory(updates.category);
+    if (updates.images)          updates.images          = safeParse(updates.images);
+    if (updates.keyActives)      updates.keyActives      = safeParse(updates.keyActives);
+    if (updates.ritual)          updates.ritual          = safeParse(updates.ritual);
+    if (updates.fullIngredients) updates.fullIngredients = safeParse(updates.fullIngredients);
 
     // ✅ new image upload
     if (req.file?.path) {
@@ -229,10 +246,7 @@ exports.deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json({
-      success: true,
-      message: "Product deleted successfully",
-    });
+    res.json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
