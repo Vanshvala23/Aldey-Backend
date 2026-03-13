@@ -143,7 +143,7 @@ exports.getProducts = async (req, res) => {
 
     // ✅ category filter works on arrays — matches any product
     //    whose category array contains the queried value
-    if (category) query.category = category;
+  if (category) query.category = { $in: Array.isArray(category) ? category : [category] };
     if (vendor)   query.vendor   = vendor;
 
     if (minPrice || maxPrice) {
