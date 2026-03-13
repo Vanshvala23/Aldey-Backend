@@ -5,6 +5,7 @@ const mongooseToSwagger = require("mongoose-to-swagger");
 const Product = require("../modules/Products");
 const User = require("../modules/Users");
 const Cart = require("../modules/Cart");
+const Order=require("../modules/Orders");
 
 const options = {
   definition: {
@@ -36,6 +37,7 @@ const options = {
         Product: mongooseToSwagger(Product),
         User: mongooseToSwagger(User),
         Cart: mongooseToSwagger(Cart),
+        Order: mongooseToSwagger(Order),
       },
     },
 
