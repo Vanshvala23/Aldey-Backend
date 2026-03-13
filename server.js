@@ -8,7 +8,7 @@ dotenv.config();
 const authRoutes = require('./router/authRoutes');
 const productRoutes=require('./router/productRoutes');
 const cartRoutes=require('./router/cartRoutes');
-const {orderRouter,adminOrderRouter}=require('./router/orderRoutes');
+const {orderRoutes,adminOrderRoutes}=require('./router/orderRoutes');
 
 const app = express();
 const corsOptions = {
@@ -63,8 +63,8 @@ app.get("/api-docs/json", (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/product',productRoutes);
 app.use("/api/cart",cartRoutes);
-app.use("/api/order",orderRouter);
-app.use("/api/admin/order",adminOrderRouter);
+app.use("/api/order",orderRoutes);
+app.use("/api/admin/order",adminOrderRoutes);
 
 app.get('/', (req, res) => {
     res.send('Welcome to Alday API');
