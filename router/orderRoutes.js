@@ -3,9 +3,6 @@ const router  = express.Router();
 const ctrl    = require("../controller/orderController");
 const auth    = require("../middleware/authMiddleware");
 
-/* ─────────────────────────────────────────────────────────────
-   Admin guard — inline, matching your project's middleware style
-───────────────────────────────────────────────────────────── */
 const adminOnly = (req, res, next) => {
   if (req.user?.role !== "admin") {
     return res.status(403).json({ success: false, message: "Forbidden. Admins only." });
@@ -13,13 +10,18 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-/* ═══════════════════════════════════════════════════════════
-   USER ROUTES  —  /api/orders
-═══════════════════════════════════════════════════════════ */
+/**
+ * @swagger
+ * tags:
+ *   - name: Orders
+ *     description: User order management
+ *   - name: Admin - Orders
+ *     description: Admin order management
+ */
 
 /**
  * @swagger
- * /api/orders:
+ * /api/order:
  *   post:
  *     summary: Place a new order
  *     tags: [Orders]
@@ -60,14 +62,30 @@ const adminOnly = (req, res, next) => {
  *                   - state
  *                   - pincode
  *                 properties:
- *                   fullName:  { type: string, example: "Jane Doe" }
- *                   phone:     { type: string, example: "9876543210" }
- *                   line1:     { type: string, example: "12 MG Road" }
- *                   line2:     { type: string, example: "Apt 4B" }
- *                   city:      { type: string, example: "Mumbai" }
- *                   state:     { type: string, example: "Maharashtra" }
- *                   pincode:   { type: string, example: "400001" }
- *                   country:   { type: string, example: "India" }
+ *                   fullName:
+ *                     type: string
+ *                     example: "Jane Doe"
+ *                   phone:
+ *                     type: string
+ *                     example: "9876543210"
+ *                   line1:
+ *                     type: string
+ *                     example: "12 MG Road"
+ *                   line2:
+ *                     type: string
+ *                     example: "Apt 4B"
+ *                   city:
+ *                     type: string
+ *                     example: "Mumbai"
+ *                   state:
+ *                     type: string
+ *                     example: "Maharashtra"
+ *                   pincode:
+ *                     type: string
+ *                     example: "400001"
+ *                   country:
+ *                     type: string
+ *                     example: "India"
  *               payment:
  *                 type: object
  *                 required:
@@ -77,10 +95,18 @@ const adminOnly = (req, res, next) => {
  *                     type: string
  *                     enum: [COD, RAZORPAY, STRIPE]
  *                     example: "COD"
- *               couponCode:       { type: string, example: "SAVE10" }
- *               discountAmount:   { type: number, example: 50 }
- *               shippingCharge:   { type: number, example: 40 }
- *               taxRate:          { type: number, example: 0.18 }
+ *               couponCode:
+ *                 type: string
+ *                 example: "SAVE10"
+ *               discountAmount:
+ *                 type: number
+ *                 example: 50
+ *               shippingCharge:
+ *                 type: number
+ *                 example: 40
+ *               taxRate:
+ *                 type: number
+ *                 example: 0.18
  *     responses:
  *       201:
  *         description: Order placed successfully
@@ -93,7 +119,7 @@ router.post("/", auth, ctrl.placeOrder);
 
 /**
  * @swagger
- * /api/orders/my:
+ * /api/order/my:
  *   get:
  *     summary: Get logged-in user's orders
  *     tags: [Orders]
@@ -102,10 +128,14 @@ router.post("/", auth, ctrl.placeOrder);
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer, example: 1 }
+ *         schema:
+ *           type: integer
+ *           example: 1
  *       - in: query
  *         name: limit
- *         schema: { type: integer, example: 10 }
+ *         schema:
+ *           type: integer
+ *           example: 10
  *       - in: query
  *         name: status
  *         schema:
@@ -121,7 +151,7 @@ router.get("/my", auth, ctrl.getMyOrders);
 
 /**
  * @swagger
- * /api/orders/{id}:
+ * /api/order/{id}:
  *   get:
  *     summary: Get a single order by ID
  *     tags: [Orders]
@@ -131,7 +161,8 @@ router.get("/my", auth, ctrl.getMyOrders);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Order MongoDB _id
  *     responses:
  *       200:
@@ -145,7 +176,7 @@ router.get("/:id", auth, ctrl.getOrderById);
 
 /**
  * @swagger
- * /api/orders/{id}/cancel:
+ * /api/order/{id}/cancel:
  *   patch:
  *     summary: Cancel an order (PENDING / CONFIRMED / PROCESSING only)
  *     tags: [Orders]
@@ -155,14 +186,17 @@ router.get("/:id", auth, ctrl.getOrderById);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     requestBody:
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             properties:
- *               reason: { type: string, example: "Changed my mind" }
+ *               reason:
+ *                 type: string
+ *                 example: "Changed my mind"
  *     responses:
  *       200:
  *         description: Order cancelled
@@ -175,7 +209,7 @@ router.patch("/:id/cancel", auth, ctrl.cancelOrder);
 
 /**
  * @swagger
- * /api/orders/{id}/return:
+ * /api/order/{id}/return:
  *   patch:
  *     summary: Request a return (DELIVERED orders only)
  *     tags: [Orders]
@@ -185,14 +219,17 @@ router.patch("/:id/cancel", auth, ctrl.cancelOrder);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     requestBody:
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             properties:
- *               reason: { type: string, example: "Product damaged" }
+ *               reason:
+ *                 type: string
+ *                 example: "Product damaged"
  *     responses:
  *       200:
  *         description: Return request submitted
@@ -204,14 +241,14 @@ router.patch("/:id/cancel", auth, ctrl.cancelOrder);
 router.patch("/:id/return", auth, ctrl.returnOrder);
 
 /* ═══════════════════════════════════════════════════════════
-   ADMIN ROUTES  —  /api/admin/orders
+   ADMIN ROUTES
 ═══════════════════════════════════════════════════════════ */
 
 const adminRouter = express.Router();
 
 /**
  * @swagger
- * /api/admin/orders/stats:
+ * /api/admin/order/stats:
  *   get:
  *     summary: Dashboard stats (status breakdown, revenue, recent orders)
  *     tags: [Admin - Orders]
@@ -227,7 +264,7 @@ adminRouter.get("/stats", auth, adminOnly, ctrl.adminGetStats);
 
 /**
  * @swagger
- * /api/admin/orders:
+ * /api/admin/order:
  *   get:
  *     summary: Get all orders with filters
  *     tags: [Admin - Orders]
@@ -236,10 +273,14 @@ adminRouter.get("/stats", auth, adminOnly, ctrl.adminGetStats);
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer, example: 1 }
+ *         schema:
+ *           type: integer
+ *           example: 1
  *       - in: query
  *         name: limit
- *         schema: { type: integer, example: 20 }
+ *         schema:
+ *           type: integer
+ *           example: 20
  *       - in: query
  *         name: status
  *         schema:
@@ -252,10 +293,13 @@ adminRouter.get("/stats", auth, adminOnly, ctrl.adminGetStats);
  *           enum: [PENDING, PAID, FAILED, REFUNDED]
  *       - in: query
  *         name: userId
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *       - in: query
  *         name: search
- *         schema: { type: string, example: "ORD-20240315" }
+ *         schema:
+ *           type: string
+ *           example: "ORD-20240315"
  *         description: Search by order number
  *     responses:
  *       200:
@@ -267,7 +311,7 @@ adminRouter.get("/", auth, adminOnly, ctrl.adminGetAllOrders);
 
 /**
  * @swagger
- * /api/admin/orders/{id}:
+ * /api/admin/order/{id}:
  *   get:
  *     summary: Get full order details
  *     tags: [Admin - Orders]
@@ -277,7 +321,8 @@ adminRouter.get("/", auth, adminOnly, ctrl.adminGetAllOrders);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Order fetched
@@ -290,7 +335,7 @@ adminRouter.get("/:id", auth, adminOnly, ctrl.adminGetOrder);
 
 /**
  * @swagger
- * /api/admin/orders/{id}/status:
+ * /api/admin/order/{id}/status:
  *   patch:
  *     summary: Update order lifecycle status
  *     tags: [Admin - Orders]
@@ -300,7 +345,8 @@ adminRouter.get("/:id", auth, adminOnly, ctrl.adminGetOrder);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -313,10 +359,19 @@ adminRouter.get("/:id", auth, adminOnly, ctrl.adminGetOrder);
  *               status:
  *                 type: string
  *                 enum: [PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, RETURNED]
- *               note:              { type: string, example: "Dispatched from warehouse" }
- *               trackingNumber:    { type: string, example: "BD123456789IN" }
- *               shippingPartner:   { type: string, example: "Blue Dart" }
- *               estimatedDelivery: { type: string, format: date, example: "2024-03-20" }
+ *               note:
+ *                 type: string
+ *                 example: "Dispatched from warehouse"
+ *               trackingNumber:
+ *                 type: string
+ *                 example: "BD123456789IN"
+ *               shippingPartner:
+ *                 type: string
+ *                 example: "Blue Dart"
+ *               estimatedDelivery:
+ *                 type: string
+ *                 format: date
+ *                 example: "2024-03-20"
  *     responses:
  *       200:
  *         description: Status updated
@@ -331,7 +386,7 @@ adminRouter.patch("/:id/status", auth, adminOnly, ctrl.adminUpdateStatus);
 
 /**
  * @swagger
- * /api/admin/orders/{id}/payment-status:
+ * /api/admin/order/{id}/payment-status:
  *   patch:
  *     summary: Manually update payment status
  *     tags: [Admin - Orders]
@@ -341,7 +396,8 @@ adminRouter.patch("/:id/status", auth, adminOnly, ctrl.adminUpdateStatus);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -368,7 +424,7 @@ adminRouter.patch("/:id/payment-status", auth, adminOnly, ctrl.adminUpdatePaymen
 
 /**
  * @swagger
- * /api/admin/orders/{id}/note:
+ * /api/admin/order/{id}/note:
  *   patch:
  *     summary: Add internal admin note to an order
  *     tags: [Admin - Orders]
@@ -378,7 +434,8 @@ adminRouter.patch("/:id/payment-status", auth, adminOnly, ctrl.adminUpdatePaymen
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -388,7 +445,9 @@ adminRouter.patch("/:id/payment-status", auth, adminOnly, ctrl.adminUpdatePaymen
  *             required:
  *               - note
  *             properties:
- *               note: { type: string, example: "Customer called, address confirmed." }
+ *               note:
+ *                 type: string
+ *                 example: "Customer called, address confirmed."
  *     responses:
  *       200:
  *         description: Note updated
@@ -403,7 +462,7 @@ adminRouter.patch("/:id/note", auth, adminOnly, ctrl.adminAddNote);
 
 /**
  * @swagger
- * /api/admin/orders/{id}:
+ * /api/admin/order/{id}:
  *   delete:
  *     summary: Soft-delete an order
  *     tags: [Admin - Orders]
@@ -413,7 +472,8 @@ adminRouter.patch("/:id/note", auth, adminOnly, ctrl.adminAddNote);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Order deleted (soft)
@@ -424,4 +484,4 @@ adminRouter.patch("/:id/note", auth, adminOnly, ctrl.adminAddNote);
  */
 adminRouter.delete("/:id", auth, adminOnly, ctrl.adminDeleteOrder);
 
-module.exports = { orderRouter: router, adminOrderRouter: adminRouter };
+module.exports = { orderRoutes: router, adminOrderRoutes: adminRouter };
