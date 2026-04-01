@@ -8,7 +8,7 @@ const adminAuth = require("../middleware/adminAuth");
  * @swagger
  * /api/product:
  *   post:
- *     summary: Create new product
+ *     summary: Create new product(Admin only operation)
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
@@ -107,7 +107,7 @@ router.get("/:id", productController.getProductById);
  * @swagger
  * /api/product/{id}:
  *   put:
- *     summary: Update product
+ *     summary: Update product (Admin only operation)
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
@@ -147,7 +147,7 @@ router.put("/:id", adminAuth, upload.single("image"), productController.updatePr
  * @swagger
  * /api/product/{id}:
  *   delete:
- *     summary: Delete product
+ *     summary: Delete product (Admin only operation)
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
@@ -171,7 +171,7 @@ router.delete("/:id", adminAuth, productController.deleteProduct);
  * @swagger
  * /api/product/{id}:
  *   patch:
- *     summary: Partially update product
+ *     summary: Partially update product (Admin only operation)
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
