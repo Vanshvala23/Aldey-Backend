@@ -1,4 +1,4 @@
-const auth = require("./auth");
+const auth = require("./authMiddleware");
 
 const adminAuth = (req, res, next) => {
   auth(req, res, () => {
