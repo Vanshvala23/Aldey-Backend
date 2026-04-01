@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const productController = require("../controller/productController");
 const upload = require("../middleware/upload"); // multer/cloudinary
+const adminAuth = require("../middleware/adminAuth");
 
 /**
  * @swagger
@@ -9,6 +10,8 @@ const upload = require("../middleware/upload"); // multer/cloudinary
  *   post:
  *     summary: Create new product
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -61,8 +64,12 @@ const upload = require("../middleware/upload"); // multer/cloudinary
  *     responses:
  *       201:
  *         description: Product created successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admins only
  */
-router.post("/", upload.single("image"), productController.createProduct);
+router.post("/", adminAuth, upload.single("image"), productController.createProduct);
 
 /**
  * @swagger
@@ -102,6 +109,8 @@ router.get("/:id", productController.getProductById);
  *   put:
  *     summary: Update product
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -127,8 +136,12 @@ router.get("/:id", productController.getProductById);
  *     responses:
  *       200:
  *         description: Product updated
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admins only
  */
-router.put("/:id", upload.single("image"), productController.updateProduct);
+router.put("/:id", adminAuth, upload.single("image"), productController.updateProduct);
 
 /**
  * @swagger
@@ -136,6 +149,8 @@ router.put("/:id", upload.single("image"), productController.updateProduct);
  *   delete:
  *     summary: Delete product
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -145,8 +160,12 @@ router.put("/:id", upload.single("image"), productController.updateProduct);
  *     responses:
  *       200:
  *         description: Product deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admins only
  */
-router.delete("/:id", productController.deleteProduct);
+router.delete("/:id", adminAuth, productController.deleteProduct);
 
 /**
  * @swagger
@@ -154,6 +173,8 @@ router.delete("/:id", productController.deleteProduct);
  *   patch:
  *     summary: Partially update product
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -188,7 +209,11 @@ router.delete("/:id", productController.deleteProduct);
  *     responses:
  *       200:
  *         description: Product partially updated
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admins only
  */
-router.patch("/:id", upload.single("image"), productController.updateProduct);
+router.patch("/:id", adminAuth, upload.single("image"), productController.updateProduct);
 
 module.exports = router;

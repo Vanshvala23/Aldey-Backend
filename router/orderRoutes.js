@@ -2,13 +2,7 @@ const express = require("express");
 const router  = express.Router();
 const ctrl    = require("../controller/orderController");
 const auth    = require("../middleware/authMiddleware");
-
-const adminOnly = (req, res, next) => {
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({ success: false, message: "Forbidden. Admins only." });
-  }
-  next();
-};
+const adminAuth = require("../middleware/adminAuth");
 
 /**
  * @swagger
@@ -260,7 +254,7 @@ const adminRouter = express.Router();
  *       403:
  *         description: Forbidden
  */
-adminRouter.get("/stats", auth, adminOnly, ctrl.adminGetStats);
+adminRouter.get("/stats", adminAuth, ctrl.adminGetStats);
 
 /**
  * @swagger
@@ -307,7 +301,7 @@ adminRouter.get("/stats", auth, adminOnly, ctrl.adminGetStats);
  *       403:
  *         description: Forbidden
  */
-adminRouter.get("/", auth, adminOnly, ctrl.adminGetAllOrders);
+adminRouter.get("/", adminAuth, ctrl.adminGetAllOrders);
 
 /**
  * @swagger
@@ -331,7 +325,7 @@ adminRouter.get("/", auth, adminOnly, ctrl.adminGetAllOrders);
  *       404:
  *         description: Order not found
  */
-adminRouter.get("/:id", auth, adminOnly, ctrl.adminGetOrder);
+adminRouter.get("/:id", adminAuth, ctrl.adminGetOrder);
 
 /**
  * @swagger
@@ -382,7 +376,7 @@ adminRouter.get("/:id", auth, adminOnly, ctrl.adminGetOrder);
  *       404:
  *         description: Order not found
  */
-adminRouter.patch("/:id/status", auth, adminOnly, ctrl.adminUpdateStatus);
+adminRouter.patch("/:id/status", adminAuth, ctrl.adminUpdateStatus);
 
 /**
  * @swagger
@@ -420,7 +414,7 @@ adminRouter.patch("/:id/status", auth, adminOnly, ctrl.adminUpdateStatus);
  *       404:
  *         description: Order not found
  */
-adminRouter.patch("/:id/payment-status", auth, adminOnly, ctrl.adminUpdatePaymentStatus);
+adminRouter.patch("/:id/payment-status", adminAuth, ctrl.adminUpdatePaymentStatus);
 
 /**
  * @swagger
@@ -458,7 +452,7 @@ adminRouter.patch("/:id/payment-status", auth, adminOnly, ctrl.adminUpdatePaymen
  *       404:
  *         description: Order not found
  */
-adminRouter.patch("/:id/note", auth, adminOnly, ctrl.adminAddNote);
+adminRouter.patch("/:id/note", adminAuth, ctrl.adminAddNote);
 
 /**
  * @swagger
@@ -482,6 +476,6 @@ adminRouter.patch("/:id/note", auth, adminOnly, ctrl.adminAddNote);
  *       404:
  *         description: Order not found
  */
-adminRouter.delete("/:id", auth, adminOnly, ctrl.adminDeleteOrder);
+adminRouter.delete("/:id", adminAuth, ctrl.adminDeleteOrder);
 
 module.exports = { orderRoutes: router, adminOrderRoutes: adminRouter };
