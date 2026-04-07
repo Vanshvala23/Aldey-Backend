@@ -3,8 +3,7 @@ const mongoose = require("mongoose");
 const cartItemSchema = new mongoose.Schema(
   {
     productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Products",
+      type: String, // 🔥 FIX: Changed from ObjectId to String to allow custom Bundles!
       required: true,
     },
     name: String,

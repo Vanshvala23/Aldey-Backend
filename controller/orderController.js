@@ -1,5 +1,6 @@
 const Order   = require("../modules/Orders");
 const Product = require("../modules/Products");
+const mongoose = require("mongoose");
 
 /* ─────────────────────────────────────────────────────────────
    HELPERS
@@ -24,41 +25,59 @@ const pushStatusHistory = (order, status, note, userId) => {
 
 exports.placeOrder = async (req, res) => {
   try {
+    const userId = req.user.id || req.user._id || req.user.userId;
+
     const {
-      items,             // [{ productId, quantity }]
+      items,             
       shippingAddress,
-      payment,           // { method: "COD" | "RAZORPAY" | ... }
+      payment,           
       couponCode,
       discountAmount = 0,
       shippingCharge = 0,
-      taxRate        = 0, // e.g. 0.18 for 18%
+      taxRate        = 0, 
     } = req.body;
 
     if (!items?.length)        return res.status(400).json({ message: "No items provided." });
     if (!shippingAddress)      return res.status(400).json({ message: "Shipping address is required." });
     if (!payment?.method)      return res.status(400).json({ message: "Payment method is required." });
 
-    // ── Resolve products from DB (validate & snapshot) ──────
-    const productIds = items.map((i) => i.productId);
-    const dbProducts = await Product.find({ productId: { $in: productIds }, isActive: true });
+    // ── Resolve products from DB ──────
+    const productIds = items.map((i) => String(i.productId));
+    
+    const validObjectIds = productIds.filter(id => mongoose.Types.ObjectId.isValid(id));
 
-    if (dbProducts.length !== productIds.length) {
-      return res.status(400).json({ message: "One or more products are unavailable." });
+    const queryOr = [{ productId: { $in: productIds } }];
+    if (validObjectIds.length > 0) {
+      queryOr.push({ _id: { $in: validObjectIds } });
     }
 
-    const productMap = Object.fromEntries(dbProducts.map((p) => [p.productId, p]));
+    const dbProducts = await Product.find({ 
+      $or: queryOr,
+      isActive: true 
+    });
+
+    const productMap = {};
+    dbProducts.forEach(p => {
+      if (p.productId) productMap[p.productId] = p;
+      productMap[p._id.toString()] = p;
+    });
 
     const resolvedItems = items.map((item) => {
-      const p = productMap[item.productId];
+      const p = productMap[String(item.productId)];
+      
+      if (!p) {
+         throw new Error(`Product ${item.productId} is currently unavailable.`);
+      }
+
       return {
-        productId:  p.productId,
-        productRef: p._id,
+        productId:  p.productId || p._id.toString(),
+        productRef: p._id, 
         name:       p.name,
-        image:      p.image,
+        image:      p.image || (p.images && p.images[0]) || "",
         price:      p.price,
-        mrp:        p.mrp,
+        mrp:        p.mrp || p.price,
         quantity:   item.quantity,
-        category:   p.category,
+        category:   Array.isArray(p.category) ? p.category : [p.category || "ALDAY"],
       };
     });
 
@@ -70,11 +89,10 @@ exports.placeOrder = async (req, res) => {
       taxRate
     );
 
-    // ── Build initial status history ─────────────────────────
     const initStatus = payment.method === "COD" ? "CONFIRMED" : "PENDING";
 
     const order = new Order({
-      user:            req.user._id,
+      user:            userId, 
       items:           resolvedItems,
       shippingAddress,
       subtotal,
@@ -92,14 +110,15 @@ exports.placeOrder = async (req, res) => {
       },
     });
 
-    pushStatusHistory(order, initStatus, "Order placed.", req.user._id);
+    pushStatusHistory(order, initStatus, "Order placed.", userId);
 
     await order.save();
 
     return res.status(201).json({ message: "Order placed successfully.", order });
   } catch (err) {
     console.error("placeOrder:", err);
-    return res.status(500).json({ message: "Server error.", error: err.message });
+    const status = err.message.includes("unavailable") ? 400 : 500;
+    return res.status(status).json({ message: "Server error.", error: err.message });
   }
 };
 
@@ -110,10 +129,12 @@ exports.placeOrder = async (req, res) => {
 
 exports.getMyOrders = async (req, res) => {
   try {
+    const userId = req.user.id || req.user._id || req.user.userId;
+
     const { page = 1, limit = 10, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const filter = { user: req.user._id, isActive: true };
+    const filter = { user: userId, isActive: true };
     if (status) filter.status = status.toUpperCase();
 
     const [orders, total] = await Promise.all([
@@ -121,7 +142,8 @@ exports.getMyOrders = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .select("-statusHistory -adminNote"),
+        // This ensures the frontend gets the status history to show the correct tracking times!
+        .select("-adminNote"), 
       Order.countDocuments(filter),
     ]);
 
@@ -142,9 +164,11 @@ exports.getMyOrders = async (req, res) => {
 
 exports.getOrderById = async (req, res) => {
   try {
+    const userId = req.user.id || req.user._id || req.user.userId;
+
     const order = await Order.findOne({
       _id:      req.params.id,
-      user:     req.user._id,
+      user:     userId,
       isActive: true,
     }).select("-adminNote");
 
@@ -164,11 +188,12 @@ exports.getOrderById = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
   try {
+    const userId = req.user.id || req.user._id || req.user.userId;
     const { reason } = req.body;
 
     const order = await Order.findOne({
       _id:      req.params.id,
-      user:     req.user._id,
+      user:     userId,
       isActive: true,
     });
 
@@ -180,7 +205,7 @@ exports.cancelOrder = async (req, res) => {
     }
 
     order.cancellationReason = reason || "Cancelled by customer.";
-    pushStatusHistory(order, "CANCELLED", order.cancellationReason, req.user._id);
+    pushStatusHistory(order, "CANCELLED", order.cancellationReason, userId);
 
     await order.save();
     return res.json({ message: "Order cancelled.", order });
@@ -197,11 +222,12 @@ exports.cancelOrder = async (req, res) => {
 
 exports.returnOrder = async (req, res) => {
   try {
+    const userId = req.user.id || req.user._id || req.user.userId;
     const { reason } = req.body;
 
     const order = await Order.findOne({
       _id:      req.params.id,
-      user:     req.user._id,
+      user:     userId,
       isActive: true,
     });
 
@@ -209,7 +235,7 @@ exports.returnOrder = async (req, res) => {
     if (order.status !== "DELIVERED")  return res.status(400).json({ message: "Only delivered orders can be returned." });
 
     order.returnReason = reason || "Return requested by customer.";
-    pushStatusHistory(order, "RETURNED", order.returnReason, req.user._id);
+    pushStatusHistory(order, "RETURNED", order.returnReason, userId);
 
     await order.save();
     return res.json({ message: "Return request submitted.", order });
@@ -226,11 +252,12 @@ exports.returnOrder = async (req, res) => {
 
 exports.confirmPayment = async (req, res) => {
   try {
+    const userId = req.user.id || req.user._id || req.user.userId;
     const { gatewayOrderId, gatewayPaymentId, gatewaySignature } = req.body;
 
     const order = await Order.findOne({
       _id:      req.params.id,
-      user:     req.user._id,
+      user:     userId,
       isActive: true,
     });
 
@@ -245,7 +272,7 @@ exports.confirmPayment = async (req, res) => {
     order.payment.status           = "PAID";
     order.payment.paidAt           = new Date();
 
-    pushStatusHistory(order, "CONFIRMED", "Payment confirmed.", req.user._id);
+    pushStatusHistory(order, "CONFIRMED", "Payment confirmed.", userId);
 
     await order.save();
     return res.json({ message: "Payment confirmed.", order });
@@ -322,6 +349,8 @@ exports.adminGetOrder = async (req, res) => {
 
 exports.adminUpdateStatus = async (req, res) => {
   try {
+    const adminId = req.user.id || req.user._id || req.user.userId;
+
     const VALID_STATUSES = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"];
     const { status, note, trackingNumber, shippingPartner, estimatedDelivery } = req.body;
 
@@ -332,7 +361,7 @@ exports.adminUpdateStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found." });
 
-    pushStatusHistory(order, status.toUpperCase(), note, req.user._id);
+    pushStatusHistory(order, status.toUpperCase(), note, adminId);
 
     if (trackingNumber)    order.trackingNumber    = trackingNumber;
     if (shippingPartner)   order.shippingPartner   = shippingPartner;

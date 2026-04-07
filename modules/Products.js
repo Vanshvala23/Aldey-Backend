@@ -2,6 +2,18 @@ const mongoose = require("mongoose");
 
 /* ------------------ Sub Schemas ------------------ */
 
+// 🔥 ADDED: New Review Schema to store individual customer reviews
+const reviewSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    title: { type: String, required: true },
+    comment: { type: String, required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } // Links the review to the logged-in user
+  },
+  { timestamps: true }
+);
+
 const keyActiveSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
@@ -96,9 +108,30 @@ const productSchema = new mongoose.Schema(
       min:  0,
     },
 
+    // 📦 Inventory (🔥 ADDED TO FIX STOCK BUG)
+    countInStock: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // 🏷 Tags & Flags
     sale: {
       type:    Boolean,
       default: false,
+    },
+
+    // 🔥 ADDED TO FIX BESTSELLER TOGGLE BUG
+    bestSeller: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    tag: {
+      type:    String,
+      default: null,
+      trim:    true,
     },
 
     // ⭐ Ratings
@@ -115,6 +148,9 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min:     0,
     },
+
+    // 🔥 ADDED: Array to hold all the reviews for this product
+    reviews: [reviewSchema],
 
     // 🖼 Images
     image: {
@@ -139,13 +175,6 @@ const productSchema = new mongoose.Schema(
     keyActives:      { type: [keyActiveSchema],  default: [] },
     ritual:          { type: [ritualSchema],      default: [] },
     fullIngredients: { type: [ingredientSchema],  default: [] },
-
-    // 🏷 Optional tag
-    tag: {
-      type:    String,
-      default: null,
-      trim:    true,
-    },
 
     // 📦 Soft delete flag
     isActive: {

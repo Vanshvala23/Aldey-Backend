@@ -12,8 +12,8 @@ const { orderRoutes, adminOrderRoutes } = require('./router/orderRoutes');
 
 const app = express();
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://alday-healthcare.netlify.app', 'http://localhost:5173','http://localhost:5174'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: "*",
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH' , 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
@@ -266,4 +266,15 @@ app.get('/', (req, res) => {
   res.send('Welcome to Alday API');
 });
 
+// --- CRITICAL FIX: EXPORT AND LISTEN ---
+
+// 1. Export the app for Vercel serverless functions
 module.exports = app;
+
+// 2. Actually start the HTTP server if running locally
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server is LIVE and running on port ${PORT}`);
+  });
+}

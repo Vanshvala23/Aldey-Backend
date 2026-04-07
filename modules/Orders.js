@@ -76,8 +76,8 @@ const orderSchema = new mongoose.Schema(
     // Human-readable order number e.g. "ORD-20240315-0042"
     orderNumber: {
       type:   String,
-      unique: true,
-      index:  true,
+      unique: true
+      // 'index: true' has been removed because 'unique: true' handles it
     },
 
     // Owner
@@ -153,7 +153,8 @@ const orderSchema = new mongoose.Schema(
 
 /* ------------------ Pre-save: generate orderNumber ------------------ */
 
-orderSchema.pre("save", async function (next) {
+// 🔥 THE FIX: Removed `next` from the function arguments entirely
+orderSchema.pre("save", async function () {
   if (this.isNew && !this.orderNumber) {
     const today   = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ""); // "20240315"
@@ -165,14 +166,12 @@ orderSchema.pre("save", async function (next) {
     });
     this.orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(4, "0")}`;
   }
-  next();
 });
 
 /* ------------------ Indexes (Performance) ------------------ */
 
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
-orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ "payment.status": 1 });
 
 module.exports = mongoose.model("Order", orderSchema);

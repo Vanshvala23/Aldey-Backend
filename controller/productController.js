@@ -15,9 +15,6 @@ const safeParse = (field) => {
 
 /* =====================================================
    🧠 Helper — Safe Category Parse
-   Accepts:  "Face Wash"  →  ["Face Wash"]
-             ["Face Wash", "Skin Care"]  →  ["Face Wash", "Skin Care"]
-             '["Face Wash","Skin Care"]'  →  ["Face Wash", "Skin Care"]
 ===================================================== */
 const parseCategory = (category) => {
   if (!category) return [];
@@ -55,23 +52,21 @@ exports.createProduct = async (req, res) => {
       ritual,
       fullIngredients,
       isActive,
+      countInStock, 
     } = req.body;
 
-    // ✅ required validation
     if (!productId || !name || !category || !price || !description) {
       return res.status(400).json({
         message: "productId, name, category, price, description are required",
       });
     }
 
-    // 🔥 parse all arrays safely
     category        = parseCategory(category);
     images          = safeParse(images);
     keyActives      = safeParse(keyActives);
     ritual          = safeParse(ritual);
     fullIngredients = safeParse(fullIngredients);
 
-    // ✅ handle main image (file OR raw URL)
     let mainImage = null;
     if (req.file?.path) {
       mainImage = req.file.path;
@@ -104,6 +99,7 @@ exports.createProduct = async (req, res) => {
       ritual,
       fullIngredients,
       isActive,
+      countInStock,
     });
 
     res.status(201).json({ success: true, data: product });
@@ -125,7 +121,8 @@ exports.getProducts = async (req, res) => {
     const {
       page           = 1,
       limit          = 10,
-      category,
+      category,      // React might send it as ?category=
+      cat,           // React might send it directly as ?cat=
       vendor,
       search,
       minPrice,
@@ -141,10 +138,28 @@ exports.getProducts = async (req, res) => {
       query.isActive = true;
     }
 
-    // ✅ category filter works on arrays — matches any product
-    //    whose category array contains the queried value
-  if (category) query.category = { $in: Array.isArray(category) ? category : [category] };
-    if (vendor)   query.vendor   = vendor;
+    const andConditions = [];
+
+    // 🔥 FIX 1: Safely grab the category filter no matter what the frontend named it
+    const activeCategory = category || cat;
+
+    // 🔥 FIX 2: Case-Insensitive Filter for Categories & Concerns
+    if (activeCategory) {
+      const catArray = Array.isArray(activeCategory) ? activeCategory : [activeCategory];
+      
+      const regexCatArray = catArray.map(c => new RegExp(c, "i"));
+
+      andConditions.push({
+        $or: [
+          { category: { $in: regexCatArray } },
+          { concern: { $in: regexCatArray } },
+          { "keyActives.name": { $in: regexCatArray } }, 
+          { "fullIngredients.name": { $in: regexCatArray } }
+        ]
+      });
+    }
+
+    if (vendor) query.vendor = vendor;
 
     if (minPrice || maxPrice) {
       query.price = {};
@@ -152,9 +167,28 @@ exports.getProducts = async (req, res) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // 🔍 text search
-    if (search) {
-      query.$text = { $search: search };
+    // 🔥 FIX 3: Deep Regex Search (Catching all possible frontend query names)
+    const activeSearch = search || req.query.keyword || req.query.q;
+
+    if (activeSearch) {
+      andConditions.push({
+        $or: [
+          { name: { $regex: activeSearch, $options: "i" } },
+          { description: { $regex: activeSearch, $options: "i" } },
+          { title: { $regex: activeSearch, $options: "i" } },
+          { subtitle: { $regex: activeSearch, $options: "i" } },
+          { category: { $regex: activeSearch, $options: "i" } },
+          { concern: { $regex: activeSearch, $options: "i" } },
+          { tag: { $regex: activeSearch, $options: "i" } },
+          { "keyActives.name": { $regex: activeSearch, $options: "i" } },
+          { "fullIngredients.name": { $regex: activeSearch, $options: "i" } }
+        ]
+      });
+    }
+
+    // Apply conditions
+    if (andConditions.length > 0) {
+      query.$and = andConditions;
     }
 
     const products = await Product.find(query)
@@ -182,7 +216,7 @@ exports.getProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findOne({
-      productId: req.params.id,
+      $or: [{ productId: req.params.id }, { _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null }],
       isActive:  true,
     });
 
@@ -203,14 +237,12 @@ exports.updateProduct = async (req, res) => {
   try {
     const updates = { ...req.body };
 
-    // 🔥 parse arrays if present
     if (updates.category)        updates.category        = parseCategory(updates.category);
     if (updates.images)          updates.images          = safeParse(updates.images);
     if (updates.keyActives)      updates.keyActives      = safeParse(updates.keyActives);
     if (updates.ritual)          updates.ritual          = safeParse(updates.ritual);
     if (updates.fullIngredients) updates.fullIngredients = safeParse(updates.fullIngredients);
 
-    // ✅ new image upload
     if (req.file?.path) {
       updates.image = req.file.path;
     }
@@ -248,6 +280,55 @@ exports.deleteProduct = async (req, res) => {
 
     res.json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}; 
+
+/* =====================================================
+   ⭐ ADD PRODUCT REVIEW (🔥 FIXED 404 ERROR)
+===================================================== */
+exports.addProductReview = async (req, res) => {
+  try {
+    const { rating, title, comment } = req.body;
+    
+    // Safely check for the product using either MongoDB _id OR custom productId
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+    const query = isObjectId 
+      ? { $or: [{ _id: req.params.id }, { productId: req.params.id }] }
+      : { productId: req.params.id };
+
+    const product = await Product.findOne(query);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Create the review object
+    const review = {
+      name: req.user ? (req.user.fullName || req.user.name) : "Verified Customer",
+      rating: Number(rating),
+      title,
+      comment,
+      user: req.user ? req.user._id : undefined
+    };
+
+    // Initialize the array if it doesn't exist just in case
+    if (!product.reviews) {
+      product.reviews = [];
+    }
+
+    // Add review to array
+    product.reviews.push(review);
+
+    // Automatically update the total review count and calculate the new average rating
+    product.reviewCount = product.reviews.length;
+    product.rating = product.reviews.reduce((acc, item) => item.rating + acc, 0) / product.reviews.length;
+
+    await product.save();
+    
+    res.status(201).json({ success: true, message: 'Review added successfully', data: product.reviews });
+  } catch (err) {
+    console.error("Review Error:", err);
     res.status(500).json({ message: err.message });
   }
 };

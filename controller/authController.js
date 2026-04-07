@@ -2,14 +2,14 @@ const User = require("../modules/Users");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// helper
-const generateToken = (userId) => {
+// helper - Added role to the token payload for better backend security checks
+const generateToken = (userId, role) => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET not configured");
   }
 
   return jwt.sign(
-    { id: userId },
+    { id: userId, role: role }, // Embed role in token
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
@@ -17,7 +17,7 @@ const generateToken = (userId) => {
 
 exports.register = async (req, res) => {
   try {
-    let { fullName, email, password, phone } = req.body;
+    let { fullName, email, password, phone, role } = req.body;
 
     if (!fullName || !email || !password || !phone) {
       return res.status(400).json({
@@ -43,15 +43,15 @@ exports.register = async (req, res) => {
       });
     }
 
-    // ✅ DO NOT HASH HERE — schema will hash
     const user = await User.create({
       fullName: fullName.trim(),
       email,
       phone: phone.trim(),
       password,
+      role: role || "user" 
     });
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     return res.status(201).json({
       success: true,
@@ -62,6 +62,7 @@ exports.register = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -86,7 +87,6 @@ exports.login = async (req, res) => {
 
     email = email.toLowerCase().trim();
 
-    // ✅ IMPORTANT FIX HERE
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
@@ -105,7 +105,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     return res.status(200).json({
       success: true,
@@ -116,6 +116,7 @@ exports.login = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -124,5 +125,82 @@ exports.login = async (req, res) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}).select("-password");
+
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+  } catch (err) {
+    console.error("Get All Users Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching users",
+    });
+  }
+};
+
+// --- UPDATE PROFILE ---
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { fullName, phone } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (fullName) user.fullName = fullName.trim();
+    if (phone) user.phone = phone.trim();
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Update Profile Error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// --- UPDATE PASSWORD ---
+exports.updatePassword = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    } 
+    // Your User model's pre("save") hook will automatically hash it for you when you call save()!
+    user.password = password;
+    
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Update Password Error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
